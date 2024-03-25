@@ -196,6 +196,11 @@ yay -S android-studio
 yay -S rider
 ```
 
+## Install Timeshift
+```
+yay -S timeshift 
+```
+
 ## Install Basic Fonts
 ```
 pacman -S ttf-dejavu ttf-liberation noto-fonts
