@@ -6,9 +6,8 @@ echo 'export PS1="\[\e[32m\]\u@\h:\w\$ \[\e[0m\]"' >> ~/.bashrc
 source ~/.bashrc
 
 ## Uncomment color and parallel downloads, and enable x86 repo in pacman.conf
-#sudo sed -i '/^#Color/s/^#//' /etc/pacman.conf
-#sudo sed -i '/^#ParallelDownloads/s/^#//' /etc/pacman.conf
-#sudo sed -i '/^\s*#\s*\[multilib\]/s/^#//; /^\s*#\s*Include = \/etc\/pacman.d\/mirrorlist/s/^#//' /etc/pacman.conf
+sudo sed -i '/^#Color/s/^#//' /etc/pacman.conf
+sudo sed -i '/^#ParallelDownloads/s/^#//' /etc/pacman.conf
 sudo pacman -Syu --noconfirm
 
 sudo pacman -S git base-devel --noconfirm
