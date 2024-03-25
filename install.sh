@@ -11,6 +11,8 @@ sudo sed -i '/^#ParallelDownloads/s/^#//' /etc/pacman.conf
 sudo sed -i '/^\s*#\s*\[multilib\]/s/^#//; /^\s*#\s*Include = \/etc\/pacman.d\/mirrorlist/s/^#//' /etc/pacman.conf
 sudo pacman -Syu --noconfirm
 
+sudo pacman -S git base-devel --noconfirm
+
 ## Install Intel Microcode
 sudo pacman -S intel-ucode --noconfirm
 
