@@ -111,6 +111,9 @@ yay -S android-studio --noconfirm
 ## Install Rider
 yay -S rider --noconfirm
 
+## Install timeshift
+yay -S timeshift --noconfirm
+
 ## Install Basic Fonts
 sudo pacman -S ttf-dejavu ttf-liberation noto-fonts --noconfirm
 yay -S ttf-ms-win11-auto ttf-adobe-source-fonts --noconfirm
