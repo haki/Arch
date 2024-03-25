@@ -2,6 +2,9 @@
 
 # Arch Setup Script for Ideapad Gaming 3 15IMH05 Notebook (Intel + Nvidia + Gnome)
 
+echo 'export PS1="\[\e[32m\]\u@\h:\w\$ \[\e[0m\]"' >> ~/.bashrc
+source ~/.bashrc
+
 ## Uncomment color and parallel downloads, and enable x86 repo in pacman.conf
 sudo sed -i '/^#Color/s/^#//' /etc/pacman.conf
 sudo sed -i '/^#ParallelDownloads/s/^#//' /etc/pacman.conf
