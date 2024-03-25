@@ -2,10 +2,6 @@
 
 ## For my Ideapad Gaming 3 15IMH05 Notebook (Intel + Nvidia + Gnome)
 
-```
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/haki/Arch/main/install.sh)"
-```
-
 ## Uncomment color and parallel downloads, and enable x86 repo in pacman.conf
 ```
 sed -i '/^#Color/s/^#//' /etc/pacman.conf
