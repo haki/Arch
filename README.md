@@ -20,6 +20,11 @@ sed -i '/^\s*#\s*\[multilib\]/s/^#//; /^\s*#\s*Include = \/etc\/pacman.d\/mirror
 pacman -Syu
 ```
 
+## Install base-devel and git
+```
+pacman -S git base-devel
+```
+
 ## Install Intel Microcode
 ```
 pacman -S intel-ucode
