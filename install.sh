@@ -12,6 +12,7 @@ sudo sed -i '/^\s*#\s*\[multilib\]/s/^#//; /^\s*#\s*Include = \/etc\/pacman.d\/m
 sudo pacman -Syu --noconfirm
 
 sudo pacman -S git base-devel --noconfirm
+sudo pacman -S gnome-terminal --noconfirm
 
 ## Install Intel Microcode
 sudo pacman -S intel-ucode --noconfirm
