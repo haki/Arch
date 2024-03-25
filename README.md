@@ -14,9 +14,6 @@ sed -i '/^#Color/s/^#//' /etc/pacman.conf
 sed -i '/^#ParallelDownloads/s/^#//' /etc/pacman.conf
 ```
 ```
-sed -i '/^\s*#\s*\[multilib\]/s/^#//; /^\s*#\s*Include = \/etc\/pacman.d\/mirrorlist/s/^#//' /etc/pacman.conf
-```
-```
 pacman -Syu
 ```
 
