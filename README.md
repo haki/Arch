@@ -25,6 +25,11 @@ pacman -Syu
 pacman -S git base-devel
 ```
 
+## Install Gnome Terminal
+```
+pacman -S gnome-terminal
+```
+
 ## Install Intel Microcode
 ```
 pacman -S intel-ucode
