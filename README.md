@@ -1,5 +1,5 @@
 # Arch
-# For my Ideapad Gaming 3 15IMH05 Notebook (Intel + Nvidia + Gnome)
+## For my Ideapad Gaming 3 15IMH05 Notebook (Intel + Nvidia + Gnome)
 
 ## Uncomment color and parallel downloads, and enable x86 repo in pacman.conf
 ```
@@ -7,9 +7,6 @@ sudo sed -i '/^#Color/s/^#//' /etc/pacman.conf
 ```
 ```
 sudo sed -i '/^#ParallelDownloads/s/^#//' /etc/pacman.conf
-```
-```
-sudo sed -i '/^#\[multilib\]/s/^#//' /etc/pacman.conf
 ```
 ```
 sudo sed -i '/^\s*#\s*\[multilib\]/s/^#//; /^\s*#\s*Include = \/etc\/pacman.d\/mirrorlist/s/^#//' /etc/pacman.conf
