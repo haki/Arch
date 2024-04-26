@@ -358,3 +358,13 @@ systemctl restart avahi-daemon NetworkManager
 ```
 systemctl enable --now cups-browsed.service
 ```
+
+### Bash Completion
+```
+pacman -S bash-completion
+```
+
+### Bluetooth module
+```
+systemctl enable --now bluetooth.service
+```
