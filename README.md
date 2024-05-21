@@ -31,11 +31,12 @@ pacman -S intel-ucode
 ## Install default video driver
 ```
 pacman -S mesa
+pacman -S --needed lib32-mesa vulkan-intel lib32-vulkan-intel vulkan-icd-loader lib32-vulkan-icd-loader
 ```
 
 ## Install Nvidia driver
 ```
-pacman -S nvidia-dkms nvidia-utils lib32-nvidia-utils
+pacman -S --needed nvidia-dkms nvidia-utils lib32-nvidia-utils nvidia-settings vulkan-icd-loader lib32-vulkan-icd-loader
 ```
 
 ## Install Xorg packages
@@ -189,6 +190,11 @@ yay -S android-studio
 yay -S rider
 ```
 
+## Install Pycharm
+```
+yay -S pycharm-professional
+```
+
 ## Install Timeshift
 ```
 yay -S timeshift 
@@ -265,6 +271,22 @@ flatpak install -y flathub org.upscayl.Upscayl
 ## Install Spotify
 ```
 flatpak install -y flathub com.spotify.Client
+```
+
+## Install Proton GE
+```
+flatpak install -y flathub net.davidotek.pupgui2
+flatpak install -y com.valvesoftware.Steam.CompatibilityTool.Proton-GE
+```
+
+## Heroic Games Launcher
+```
+flatpak install -y flathub com.heroicgameslauncher.hgl
+```
+
+## Lutris
+```
+flatpak install -y flathub net.lutris.Lutris
 ```
 
 ## Install Postman
@@ -364,7 +386,32 @@ systemctl enable --now cups-browsed.service
 pacman -S bash-completion
 ```
 
+### Gnome Browser Connector
+```
+pacman -S gnome-browser-connector
+```
+
 ### Bluetooth module
 ```
 systemctl enable --now bluetooth.service
+```
+
+### Python pip
+```
+pacman -S python-pip
+```
+
+### Python pipx
+```
+pacman -S python-pipx
+```
+
+### Easy Effect Presets
+```
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/JackHack96/PulseEffects-Presets/master/install.sh)"
+```
+
+### Gogh
+```
+bash -c "$(wget -qO- https://git.io/vQgMr)"
 ```
