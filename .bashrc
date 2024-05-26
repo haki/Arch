@@ -9,7 +9,7 @@ alias ls='ls --color=auto'
 alias grep='grep --color=auto'
 # PS1='[\u@\h \W]\$ '
 
-CHROME_EXECUTABLE="/usr/bin/google-chrome-stable"
+export CHROME_EXECUTABLE="/usr/bin/google-chrome-stable"
 
 # Load the git prompt script
 if [ -f "/usr/share/git/git-prompt.sh" ]; then
