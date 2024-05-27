@@ -1,19 +1,21 @@
-# Arch
+# Arch Linux Setup for Ideapad Gaming 3 (15IMH05) - Intel + Nvidia + Gnome
 
-## For my Ideapad Gaming 3 15IMH05 Notebook (Intel + Nvidia + Gnome)
+This guide provides a comprehensive setup process for Arch Linux on the Ideapad Gaming 3 (15IMH05), focusing on Intel and Nvidia graphics with Gnome desktop. It includes essential drivers, development tools, and multimedia applications.
 
-## Uncomment color and parallel downloads, and enable x86 repo in pacman.conf
-```
-sed -i '/^#Color/s/^#//' /etc/pacman.conf
-```
-```
-sed -i '/^#ParallelDownloads/s/^#//' /etc/pacman.conf
-```
-```
-pacman -Syu
+## System Preparation
+
+### Enable Color and Parallel Downloads in pacman.conf
+```bash
+sudo sed -i '/^#Color/s/^#//' /etc/pacman.conf
+sudo sed -i '/^#ParallelDownloads/s/^#//' /etc/pacman.conf
 ```
 
-## Install base-devel and git
+## Update system
+```bash
+sudo pacman -Syu
+```
+
+Install Base Development Tools and Git
 ```
 pacman -S git base-devel
 ```
