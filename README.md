@@ -3,417 +3,269 @@
 This guide provides a comprehensive setup process for Arch Linux on the Ideapad Gaming 3 (15IMH05), focusing on Intel and Nvidia graphics with Gnome desktop. It includes essential drivers, development tools, and multimedia applications.
 
 ## System Preparation
-
 ### Enable Color and Parallel Downloads in pacman.conf
-```bash
+```
 sudo sed -i '/^#Color/s/^#//' /etc/pacman.conf
 sudo sed -i '/^#ParallelDownloads/s/^#//' /etc/pacman.conf
 ```
 
-## Update system
-```bash
+### Update system
+```
 sudo pacman -Syu
 ```
 
-Install Base Development Tools and Git
+## Install Base Development Tools and Git
 ```
-pacman -S git base-devel
-```
-
-## Install Gnome Terminal
-```
-pacman -S gnome-terminal
+sudo pacman -S git base-devel
 ```
 
-## Install Intel Microcode
+## Installing Graphics Drivers
+### Install Intel Microcode
 ```
-pacman -S intel-ucode
-```
-
-## Install default video driver
-```
-pacman -S mesa
-pacman -S --needed lib32-mesa vulkan-intel lib32-vulkan-intel vulkan-icd-loader lib32-vulkan-icd-loader
+sudo pacman -S intel-ucode
 ```
 
-## Install Nvidia driver
+### Install Default Video Driver (Mesa)
 ```
-pacman -S --needed nvidia-dkms nvidia-utils lib32-nvidia-utils nvidia-settings vulkan-icd-loader lib32-vulkan-icd-loader
-```
-
-## Install Xorg packages
-```
-pacman -S xorg-server xorg-xinit
+sudo pacman -S mesa lib32-mesa vulkan-intel lib32-vulkan-intel vulkan-icd-loader lib32-vulkan-icd-loader
 ```
 
-## Install UFW
+### Install Nvidia Driver
 ```
-pacman -S ufw
-```
-```
-systemctl enable ufw
-```
-```
-systemctl start ufw
+sudo pacman -S nvidia-dkms nvidia-utils lib32-nvidia-utils nvidia-settings vulkan-icd-loader lib32-vulkan-icd-loader
 ```
 
-## Enable daily TRIM for SSD
+## Xorg and Desktop Environment
+### Install Xorg Packages
 ```
-systemctl enable fstrim.timer
+sudo pacman -S xorg-server xorg-xinit
 ```
 
-## Install yay aur helper
+### Install GNOME Terminal
+```
+sudo pacman -S gnome-terminal
+```
+
+## AUR Helper Installation
+### Install yay AUR Helper
 ```
 cd /tmp
-```
-```
 git clone https://aur.archlinux.org/yay.git
-```
-```
-cd /tmp/yay
-```
-```
+cd yay
 makepkg -si
-```
-```
 cd ~/
 ```
 
-## Incase file:// uris dont open in gnome nautilus
+## System Optimization
+### Enable Daily TRIM for SSD
+```
+sudo systemctl enable fstrim.timer
+```
+
+## Fix Nautilus File URI Handling
+### Set Nautilus as Default for inode/directory MIME Type
 ```
 xdg-mime default org.gnome.Nautilus.desktop inode/directory
 ```
 
-## Install snapd
+## Package Installations
+### Install Snapd
 ```
 cd /tmp
-```
-```
 git clone https://aur.archlinux.org/snapd.git
-```
-```
-cd /tmp/snapd
-```
-```
+cd snapd
 makepkg -si
-```
-```
 sudo systemctl enable --now snapd.socket
-```
-```
 sudo ln -s /var/lib/snapd/snap /snap
-```
-```
 cd ~/
 ```
 
-## Install Flatpak
+### Install Flatpak
 ```
-pacman -S flatpak
-```
-
-## Install VLC
-```
-pacman -S vlc
+sudo pacman -S flatpak
 ```
 
-## Install Steam
+### Install Common Applications
 ```
-pacman -S steam
-```
-
-## Install papirus icon theme
-```
-pacman -S papirus-icon-theme
+sudo pacman -S vlc steam papirus-icon-theme tlp tlp-rdw unzip dotnet-sdk mono touchegg ttf-dejavu ttf-liberation noto-fonts gstreamer
 ```
 
-## Install tlp
+### Enable TLP Services
 ```
-pacman -S tlp tlp-rdw
-```
-```
-systemctl enable tlp.service
-```
-```
-systemctl enable NetworkManager-dispatcher.service
-```
-```
-systemctl mask systemd-rfkill.service systemd-rfkill.socket
+sudo systemctl enable tlp.service
+sudo systemctl enable NetworkManager-dispatcher.service
+sudo systemctl mask systemd-rfkill.service systemd-rfkill.socket
 ```
 
-## Install unzip
+### Enable Touchegg Service
 ```
-pacman -S unzip
-```
-
-## Install .Net SDK
-```
-pacman -S dotnet-sdk
+sudo systemctl enable touchegg.service
+sudo systemctl start touchegg
 ```
 
-## Install mono
-```
-pacman -S mono
-```
-
-## Install touchegg
-```
-pacman -S touchegg
-```
-```
-systemctl enable touchegg.service
-```
-```
-systemctl start touchegg
-```
-
-## Install Unity Hub
+## Install Development Tools
+### Install Unity Hub
 ```
 yay -S unityhub
 ```
 
-## Install Visual Studio Code
+### Install Visual Studio Code
 ```
 yay -S visual-studio-code-bin
 ```
 
-## Install JDK 17
+### Install JDK 17
 ```
-pacman -S jre17-openjdk jdk17-openjdk
+sudo pacman -S jre17-openjdk jdk17-openjdk
 ```
 
-## Install Android Studio
+### Install Android Studio
 ```
 yay -S android-studio
 ```
 
-## Install Rider
+### Install JetBrains Tools
 ```
-yay -S rider
-```
-
-## Install Pycharm
-```
-yay -S pycharm-professional
+yay -S rider pycharm-professional
 ```
 
-## Install Timeshift
+### Install Timeshift
 ```
-yay -S timeshift 
+yay -S timeshift
+sudo systemctl enable --now cronie.service
+sudo crontab -e
 ```
 
-## Install Basic Fonts
-```
-pacman -S ttf-dejavu ttf-liberation noto-fonts
-```
+### Install Basic Fonts
 ```
 yay -S ttf-ms-win11-auto ttf-adobe-source-fonts
 ```
 
-## Install GStreamer
-```
-pacman -S gstreamer
-```
-
-## Install Touche
+## Multimedia Applications
+### Install Applications via Flatpak
 ```
 flatpak install -y flathub com.github.joseexposito.touche
-```
-
-## Install Thunderbird
-```
 flatpak install -y flathub org.mozilla.Thunderbird
-```
-
-## Install Obisidian
-```
 flatpak install -y flathub md.obsidian.Obsidian
-```
-
-## Install Telegram
-```
 flatpak install -y flathub org.telegram.desktop
-```
-
-## Install Libreoffice
-```
-flatpak install -y flathub org.libreoffice.LibreOffice 
-```
-
-## Install Remmina
-```
+flatpak install -y flathub org.libreoffice.LibreOffice
 flatpak install -y flathub org.remmina.Remmina
-```
-
-## Install Easyeffects
-```
 flatpak install -y flathub com.github.wwmm.easyeffects
-```
-
-## Install Gimp
-```
 flatpak install -y flathub org.gimp.GIMP
-```
-
-## Install Discord
-```
 flatpak install -y flathub com.discordapp.Discord
-```
-
-## Install Kdenlive
-```
 flatpak install -y flathub org.kde.kdenlive
-```
-
-## Install Upscayl
-```
 flatpak install -y flathub org.upscayl.Upscayl
-```
-
-## Install Spotify
-```
 flatpak install -y flathub com.spotify.Client
-```
-
-## Install Proton GE
-```
 flatpak install -y flathub net.davidotek.pupgui2
-flatpak install -y com.valvesoftware.Steam.CompatibilityTool.Proton-GE
-```
-
-## Heroic Games Launcher
-```
+flatpak install -y flathub com.valvesoftware.Steam.CompatibilityTool.Proton-GE
 flatpak install -y flathub com.heroicgameslauncher.hgl
-```
-
-## Lutris
-```
 flatpak install -y flathub net.lutris.Lutris
 ```
 
-## Install Postman
+### Install Applications via Snap
 ```
 sudo snap install postman
-```
-
-## Install Flutter
-```
 sudo snap install flutter --classic
-```
-
-## Install Blender
-```
 sudo snap install blender --classic
 ```
 
+## Virtualization
 ## Install KVM
 ```
-pacman -S qemu-full virt-manager virt-viewer dnsmasq bridge-utils libguestfs ebtables vde2 openbsd-netcat
-```
-```
-systemctl enable libvirtd.service
-```
-```
-systemctl start libvirtd.service
-```
-```
-usermod -aG libvirt $USER
-```
-```
-systemctl restart libvirtd.service
+sudo pacman -S qemu-full virt-manager virt-viewer dnsmasq bridge-utils libguestfs ebtables vde2 openbsd-netcat
+sudo systemctl enable libvirtd.service
+sudo systemctl start libvirtd.service
+sudo usermod -aG libvirt $USER
+sudo systemctl restart libvirtd.service
 ```
 
-## Install Docker desktop
+## Additional Tools
+### Install Docker Desktop
 ```
 yay -S docker-desktop
-```
-```
 systemctl --user disable docker-desktop
 ```
 
-## Install Anydesk
+### Install Various Tools
 ```
-yay -S anydesk-bin
-```
-
-## Install Github Desktop
-```
-yay -S github-desktop-bin
+yay -S anydesk-bin github-desktop-bin google-chrome
 ```
 
-## Install Google Chrome
+### Install Printer Support
 ```
-yay -S google-chrome
-```
-
-## Install Printer
-```
-pacman -Syu cups cups-browsed cups-filters cups-pdf system-config-printer --needed
-```
-```
-pacman -Syu ghostscript gsfonts foomatic-db-engine foomatic-db foomatic-db-ppds foomatic-db-nonfree foomatic-db-nonfree-ppds gutenprint foomatic-db-gutenprint-ppds --needed
-```
-```
-pacman -Syu print-manager --needed
-```
-```
-systemctl enable --now cups.socket
-```
-```
-systemctl enable --now cups.service
+sudo pacman -Syu cups cups-browsed cups-filters cups-pdf system-config-printer ghostscript gsfonts foomatic-db-engine foomatic-db foomatic-db-ppds foomatic-db-nonfree foomatic-db-nonfree-ppds gutenprint foomatic-db-gutenprint-ppds print-manager --needed
+sudo systemctl enable --now cups.socket
+sudo systemctl enable --now cups.service
 ```
 
-### Network Printer
+### Enable Network Printer
 ```
-pacman -S nss-mdns
-```
-```
-pacman -Syu avahi --needed
-```
-```
-systemctl enable --now avahi-daemon
-```
-```
-sed -i 's/hosts: mymachines /hosts: mymachines mdns_minimal [NOTFOUND=return] /' /etc/nsswitch.conf
-```
-```
-systemctl restart avahi-daemon NetworkManager
-```
-```
-systemctl enable --now cups-browsed.service
+sudo pacman -S nss-mdns avahi --needed
+sudo systemctl enable --now avahi-daemon
+sudo sed -i 's/hosts: mymachines/hosts: mymachines mdns_minimal [NOTFOUND=return]/' /etc/nsswitch.conf
+sudo systemctl restart avahi-daemon NetworkManager
+sudo systemctl enable --now cups-browsed.service
 ```
 
-### Bash Completion
+## Network Manager
 ```
-pacman -S bash-completion
-```
-
-### Gnome Browser Connector
-```
-pacman -S gnome-browser-connector
+sudo pacman -S networkmanager
+sudo systemctl enable NetworkManager.service
+sudo systemctl start NetworkManager.service
 ```
 
-### Bluetooth module
+## Power Management:
 ```
-systemctl enable --now bluetooth.service
-```
-
-### Python pip
-```
-pacman -S python-pip
+sudo pacman -S thermald
+sudo systemctl enable thermald
+sudo systemctl start thermald
 ```
 
-### Python pipx
+## Firewall Configuration
 ```
-pacman -S python-pipx
+sudo pacman -S ufw
+sudo systemctl enable ufw
+sudo systemctl start ufw
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow ssh
+sudo ufw enable
 ```
 
-### Easy Effect Presets
+## Hardware Acceleration for Media
+```
+sudo pacman -S ffmpeg vdpauinfo libva-vdpau-driver libva-utils
+```
+
+## Shell and Browser Enhancements
+### Enable Bash Completion
+```
+sudo pacman -S bash-completion
+```
+
+### Install GNOME Browser Connector
+```
+sudo pacman -S gnome-browser-connector
+```
+
+## Bluetooth and Python Tools
+### Enable Bluetooth
+```
+sudo systemctl enable --now bluetooth.service
+```
+
+### Install Python Tools
+```
+sudo pacman -S python-pip python-pipx
+```
+
+## Additional Customizations
+### Install Easy Effect Presets
 ```
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/JackHack96/PulseEffects-Presets/master/install.sh)"
 ```
 
-### Gogh
+### Install Gogh (Terminal Color Schemes)
 ```
 bash -c "$(wget -qO- https://git.io/vQgMr)"
 ```
