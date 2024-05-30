@@ -2,12 +2,6 @@ This guide provides a comprehensive setup process for Arch Linux on the Ideapad 
 
 ## System Preparation
 
-### Enable Color and Parallel Downloads in pacman.conf
-```bash
-sudo sed -i '/^#Color/s/^#//' /etc/pacman.conf
-sudo sed -i '/^#ParallelDownloads/s/^#//' /etc/pacman.conf
-```
-
 ## Update system
 ```bash
 sudo pacman -Syu
