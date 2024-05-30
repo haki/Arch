@@ -2,6 +2,19 @@ This guide provides a comprehensive setup process for Arch Linux on the Ideapad 
 
 ## System Preparation
 
+## Uncomment color and parallel downloads, and enable x86 repo in pacman.conf
+```bash
+sudo nano /etc/pacman.conf
+```
+```bash
+# Misc options
+Color
+ParallelDownloads = 5
+
+[multilib]
+Include = /etc/pacman.d/mirrorlist
+```
+
 ## Update system
 ```bash
 sudo pacman -Syu
