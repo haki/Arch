@@ -150,7 +150,7 @@ systemctl --user disable docker-desktop || handle_error "Disable Docker Desktop"
 
 # Step 27: Install Various Tools
 echo "Step 27: Installing Various Tools"
-yay -S --noconfirm anydesk-bin github-desktop-bin google-chrome || handle_error "Install Various Tools"
+yay -S --noconfirm anydesk-bin google-chrome || handle_error "Install Various Tools"
 
 # Step 28: Install Printer Support
 echo "Step 28: Installing Printer Support"
