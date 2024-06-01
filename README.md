@@ -20,7 +20,28 @@ Include = /etc/pacman.d/mirrorlist
 sudo pacman -Syu
 ```
 
-Install Base Development Tools and Git
+## Reviewing ZRAM Settings
+```bash
+sudo nano /etc/systemd/zram-generator.conf
+```
+```
+[zram0]
+zram-size = ram / 2
+compression-algorithm = lz4
+```
+
+## Setting the Swappiness Value
+```bash
+sudo nano /etc/sysctl.d/99-sysctl.conf
+```
+```
+vm.swappiness=10
+```
+```bash
+sudo sysctl -p /etc/sysctl.d/99-sysctl.conf
+```
+
+## Install Base Development Tools and Git
 ```
 pacman -S git base-devel
 ```
