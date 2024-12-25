@@ -1,219 +1,301 @@
 #!/bin/bash
 
-# Function to handle errors
-handle_error() {
-    echo "Error occurred at step: \$1"
+# Set strict error handling
+set -euo pipefail
+IFS=$'\n\t'
+
+# Define colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Define log file
+LOG_FILE="/tmp/arch_setup_$(date +%Y%m%d_%H%M%S).log"
+
+# Helper functions
+log() {
+    local message="$1"
+    echo -e "${GREEN}[INFO]${NC} $message"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] $message" >> "$LOG_FILE"
+}
+
+error() {
+    local message="$1"
+    echo -e "${RED}[ERROR]${NC} $message" >&2
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR] $message" >> "$LOG_FILE"
     exit 1
 }
 
-# Arch Linux Setup for Ideapad Gaming 3 (15IMH05) - Intel + Nvidia + Gnome
-# Step 1: Update system
-echo "Step 1: Updating system"
-sudo pacman -Syu --noconfirm || handle_error "Update system"
+warning() {
+    local message="$1"
+    echo -e "${YELLOW}[WARNING]${NC} $message"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [WARNING] $message" >> "$LOG_FILE"
+}
 
-# Step 2: Install Base Development Tools and Git
-echo "Step 2: Installing Base Development Tools and Git"
-sudo pacman -S --noconfirm git base-devel || handle_error "Install Base Development Tools and Git"
+check_root() {
+    if [[ $EUID -ne 0 ]]; then
+        error "This script must be run as root"
+    fi
+}
 
-# Step 3: Install Intel Microcode
-echo "Step 3: Installing Intel Microcode"
-sudo pacman -S --noconfirm intel-ucode || handle_error "Install Intel Microcode"
+# Function to handle errors
+handle_error() {
+    local line_number=$1
+    local error_code=$2
+    error "Error occurred in script at line $line_number (Error code: $error_code)"
+}
 
-# Step 4: Install Default Video Driver (Mesa)
-echo "Step 4: Installing Default Video Driver (Mesa)"
-sudo pacman -S --noconfirm mesa lib32-mesa vulkan-intel lib32-vulkan-intel vulkan-icd-loader lib32-vulkan-icd-loader || handle_error "Install Default Video Driver (Mesa)"
+trap 'handle_error ${LINENO} $?' ERR
 
-# Step 5: Install Nvidia Driver
-echo "Step 5: Installing Nvidia Driver"
-sudo pacman -S --noconfirm nvidia-dkms nvidia-utils lib32-nvidia-utils nvidia-settings vulkan-icd-loader lib32-vulkan-icd-loader || handle_error "Install Nvidia Driver"
+# Check if running as root
+check_root
 
-# Step 6: Install Xorg Packages
-echo "Step 6: Installing Xorg Packages"
-sudo pacman -S --noconfirm xorg-server xorg-xinit || handle_error "Install Xorg Packages"
+# Create backup of original configuration files
+backup_configs() {
+    log "Creating backup of configuration files..."
+    local backup_dir="/root/config_backup_$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$backup_dir"
+    
+    # List of files to backup
+    local files=(
+        "/etc/pacman.conf"
+        "/etc/systemd/zram-generator.conf"
+        "/etc/sysctl.d/99-sysctl.conf"
+    )
+    
+    for file in "${files[@]}"; do
+        if [[ -f "$file" ]]; then
+            cp "$file" "$backup_dir/" || warning "Failed to backup $file"
+        fi
+    done
+    
+    log "Backups created in $backup_dir"
+}
 
-# Step 7: Install GNOME Terminal
-echo "Step 7: Installing GNOME Terminal"
-sudo pacman -S --noconfirm gnome-terminal || handle_error "Install GNOME Terminal"
+# Configure pacman
+configure_pacman() {
+    log "Configuring pacman..."
+    
+    # Enable color and parallel downloads
+    sed -i 's/#Color/Color/' /etc/pacman.conf
+    sed -i 's/#ParallelDownloads = 5/ParallelDownloads = 5/' /etc/pacman.conf
+    
+    # Enable multilib repository
+    if ! grep -q "^\[multilib\]" /etc/pacman.conf; then
+        echo -e "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf
+    fi
+    
+    # Update system
+    pacman -Syu --noconfirm || error "System update failed"
+}
 
-# Step 8: Install yay AUR Helper
-echo "Step 8: Installing yay AUR Helper"
-cd /tmp || handle_error "Change directory to /tmp"
-git clone https://aur.archlinux.org/yay.git || handle_error "Clone yay repository"
-cd yay || handle_error "Change directory to yay"
-makepkg -si --noconfirm || handle_error "Install yay"
-cd ~/
+# Configure ZRAM
+configure_zram() {
+    log "Configuring ZRAM..."
+    
+    cat > /etc/systemd/zram-generator.conf << EOF
+[zram0]
+zram-size = ram / 2
+compression-algorithm = lz4
+EOF
+}
 
-# Step 9: Enable Daily TRIM for SSD
-echo "Step 9: Enabling Daily TRIM for SSD"
-sudo systemctl enable fstrim.timer || handle_error "Enable Daily TRIM for SSD"
+# Configure swappiness
+configure_swappiness() {
+    log "Configuring swappiness..."
+    
+    echo "vm.swappiness=10" > /etc/sysctl.d/99-sysctl.conf
+    sysctl -p /etc/sysctl.d/99-sysctl.conf || warning "Failed to apply swappiness settings"
+}
 
-# Step 10: Set Nautilus as Default for inode/directory MIME Type
-echo "Step 10: Setting Nautilus as Default for inode/directory MIME Type"
-xdg-mime default org.gnome.Nautilus.desktop inode/directory || handle_error "Set Nautilus as Default for inode/directory MIME Type"
+# Install base packages
+install_base_packages() {
+    log "Installing base packages..."
+    
+    local packages=(
+        "git" "base-devel" "gnome-terminal" "intel-ucode"
+        "mesa" "lib32-mesa" "vulkan-intel" "lib32-vulkan-intel"
+        "vulkan-icd-loader" "lib32-vulkan-icd-loader"
+        "nvidia-dkms" "nvidia-utils" "lib32-nvidia-utils"
+        "nvidia-settings" "xorg-server" "xorg-xinit"
+        "ufw" "pipewire" "pipewire-alsa" "pipewire-pulse"
+        "pipewire-jack" "wireplumber"
+    )
+    
+    pacman -S --needed --noconfirm "${packages[@]}" || error "Failed to install base packages"
+}
 
-# Step 11: Install Snapd
-echo "Step 11: Installing Snapd"
-cd /tmp || handle_error "Change directory to /tmp"
-git clone https://aur.archlinux.org/snapd.git || handle_error "Clone snapd repository"
-cd snapd || handle_error "Change directory to snapd"
-makepkg -si --noconfirm || handle_error "Install snapd"
-sudo systemctl enable --now snapd.socket || handle_error "Enable snapd.socket"
-sudo ln -s /var/lib/snapd/snap /snap || handle_error "Create snap symlink"
-cd ~/
+# Configure services
+configure_services() {
+    log "Configuring system services..."
+    
+    local services=(
+        "ufw"
+        "fstrim.timer"
+        "libvirtd"
+        "bluetooth"
+        "cups.socket"
+        "cups.service"
+        "avahi-daemon"
+    )
+    
+    for service in "${services[@]}"; do
+        systemctl enable "$service" || warning "Failed to enable $service"
+        systemctl start "$service" || warning "Failed to start $service"
+    done
+}
 
-# Step 12: Install Flatpak
-echo "Step 12: Installing Flatpak"
-sudo pacman -S --noconfirm flatpak || handle_error "Install Flatpak"
+# Install AUR helper (yay)
+install_yay() {
+    log "Installing yay AUR helper..."
+    
+    if ! command -v yay &> /dev/null; then
+        cd /tmp
+        git clone https://aur.archlinux.org/yay.git
+        cd yay
+        makepkg -si --noconfirm
+        cd ..
+        rm -rf yay
+    else
+        log "yay is already installed"
+    fi
+}
 
-# Step 13: Install Common Applications
-echo "Step 13: Installing Common Applications"
-sudo pacman -S --noconfirm vlc steam papirus-icon-theme tlp tlp-rdw unzip dotnet-sdk mono touchegg ttf-dejavu ttf-liberation noto-fonts gstreamer || handle_error "Install Common Applications"
+# Install development tools
+install_dev_tools() {
+    log "Installing development tools..."
+    
+    # Install from official repos
+    pacman -S --needed --noconfirm jre17-openjdk jdk17-openjdk || warning "Failed to install Java"
+    
+    # Install from AUR
+    local aur_packages=(
+        "visual-studio-code-bin"
+        "android-studio"
+        "rider"
+        "pycharm-professional"
+        "docker-desktop"
+        "github-desktop-bin"
+    )
+    
+    for package in "${aur_packages[@]}"; do
+        yay -S --needed --noconfirm "$package" || warning "Failed to install $package"
+    done
+}
 
-# Step 14: Enable TLP Services
-echo "Step 14: Enabling TLP Services"
-sudo systemctl enable tlp.service || handle_error "Enable tlp.service"
-sudo systemctl enable NetworkManager-dispatcher.service || handle_error "Enable NetworkManager-dispatcher.service"
-sudo systemctl mask systemd-rfkill.service systemd-rfkill.socket || handle_error "Mask systemd-rfkill.service and systemd-rfkill.socket"
+# Configure audio
+configure_audio() {
+    log "Configuring high-quality audio..."
+    
+    # Create necessary directories
+    mkdir -p ~/.config/pipewire/
+    mkdir -p ~/.config/wireplumber/main.lua.d/
+    
+    # Copy and configure PipeWire configs
+    cp /usr/share/pipewire/pipewire.conf ~/.config/pipewire/
+    cp /usr/share/pipewire/client.conf ~/.config/pipewire/
+    
+    # Configure main PipeWire settings
+    cat > ~/.config/pipewire/pipewire.conf << EOF
+context.properties = {
+    default.clock.rate = 192000
+    default.clock.allowed-rates = [ 44100 48000 96000 192000 ]
+    default.clock.quantum = 1024
+    default.clock.min-quantum = 1024
+    default.clock.max-quantum = 2048
+}
+EOF
 
-# Step 15: Enable Touchegg Service
-echo "Step 15: Enabling Touchegg Service"
-sudo systemctl enable touchegg.service || handle_error "Enable touchegg.service"
-sudo systemctl start touchegg || handle_error "Start touchegg"
+    # Configure client settings
+    cat > ~/.config/pipewire/client.conf << EOF
+stream.properties = {
+    resample.quality = 15
+}
 
-# Step 16: Install Unity Hub
-echo "Step 16: Installing Unity Hub"
-yay -S --noconfirm unityhub || handle_error "Install Unity Hub"
+context.modules = [
+    { name = libpipewire-module-rt
+        args = {
+            nice.level = -15
+        }
+        flags = [ ifexists nofail ]
+    }
+]
+EOF
 
-# Step 17: Install Visual Studio Code
-echo "Step 17: Installing Visual Studio Code"
-yay -S --noconfirm visual-studio-code-bin || handle_error "Install Visual Studio Code"
+    # Configure WirePlumber
+    cat > ~/.config/wireplumber/main.lua.d/51-alsa-custom.lua << EOF
+rule = {
+  matches = {
+    {
+      { "node.name", "matches", "alsa_output.*" },
+    },
+  },
+  apply_properties = {
+    ["audio.format"] = "S24_LE",
+    ["audio.rate"] = 192000,
+    ["api.alsa.period-size"] = 1024,
+    ["api.alsa.headroom"] = 16384,
+    ["audio.channels"] = 2,
+    ["audio.position"] = "FL,FR",
+    ["node.latency"] = "1024/192000",
+    ["node.pause-on-idle"] = false
+  },
+}
 
-# Step 18: Install JDK 17
-echo "Step 18: Installing JDK 17"
-sudo pacman -S --noconfirm jre17-openjdk jdk17-openjdk || handle_error "Install JDK 17"
+table.insert(alsa_monitor.rules,rule)
+EOF
 
-# Step 19: Install Android Studio
-echo "Step 19: Installing Android Studio"
-yay -S --noconfirm android-studio || handle_error "Install Android Studio"
+    # Restart audio services
+    systemctl --user restart wireplumber.service pipewire.service pipewire-pulse.service
+}
 
-# Step 20: Install JetBrains Tools
-echo "Step 20: Installing JetBrains Tools"
-yay -S --noconfirm rider pycharm-professional || handle_error "Install JetBrains Tools"
+# Install Flatpak applications
+install_flatpak_apps() {
+    log "Installing Flatpak applications..."
+    
+    local apps=(
+        "com.github.joseexposito.touche"
+        "org.mozilla.Thunderbird"
+        "md.obsidian.Obsidian"
+        "org.telegram.desktop"
+        "org.libreoffice.LibreOffice"
+        "org.remmina.Remmina"
+        "com.github.wwmm.easyeffects"
+        "org.gimp.GIMP"
+        "com.discordapp.Discord"
+        "org.kde.kdenlive"
+        "org.upscayl.Upscayl"
+        "com.spotify.Client"
+        "net.davidotek.pupgui2"
+        "com.valvesoftware.Steam.CompatibilityTool.Proton-GE"
+        "com.heroicgameslauncher.hgl"
+        "net.lutris.Lutris"
+    )
+    
+    for app in "${apps[@]}"; do
+        flatpak install -y flathub "$app" || warning "Failed to install $app"
+    done
+}
 
-# Step 21: Install Timeshift
-echo "Step 21: Installing Timeshift"
-yay -S --noconfirm timeshift || handle_error "Install Timeshift"
-sudo systemctl enable --now cronie.service || handle_error "Enable cronie.service"
-sudo crontab -e || handle_error "Edit crontab"
+# Main execution
+main() {
+    log "Starting Arch Linux setup script..."
+    
+    backup_configs
+    configure_pacman
+    configure_zram
+    configure_swappiness
+    install_base_packages
+    configure_services
+    install_yay
+    install_dev_tools
+    configure_audio
+    install_flatpak_apps
+    
+    log "Setup completed successfully!"
+    log "Please check the log file at $LOG_FILE for details"
+}
 
-# Step 22: Install Basic Fonts
-echo "Step 22: Installing Basic Fonts"
-yay -S --noconfirm ttf-ms-win11-auto ttf-adobe-source-fonts || handle_error "Install Basic Fonts"
-
-# Step 23: Install Applications via Flatpak
-echo "Step 23: Installing Applications via Flatpak"
-flatpak install -y flathub com.github.joseexposito.touche || handle_error "Install touche via Flatpak"
-flatpak install -y flathub org.mozilla.Thunderbird || handle_error "Install Thunderbird via Flatpak"
-flatpak install -y flathub md.obsidian.Obsidian || handle_error "Install Obsidian via Flatpak"
-flatpak install -y flathub org.telegram.desktop || handle_error "Install Telegram via Flatpak"
-flatpak install -y flathub org.libreoffice.LibreOffice || handle_error "Install LibreOffice via Flatpak"
-flatpak install -y flathub org.remmina.Remmina || handle_error "Install Remmina via Flatpak"
-flatpak install -y flathub com.github.wwmm.easyeffects || handle_error "Install EasyEffects via Flatpak"
-flatpak install -y flathub org.gimp.GIMP || handle_error "Install GIMP via Flatpak"
-flatpak install -y flathub com.discordapp.Discord || handle_error "Install Discord via Flatpak"
-flatpak install -y flathub org.kde.kdenlive || handle_error "Install Kdenlive via Flatpak"
-flatpak install -y flathub org.upscayl.Upscayl || handle_error "Install Upscayl via Flatpak"
-flatpak install -y flathub com.spotify.Client || handle_error "Install Spotify via Flatpak"
-flatpak install -y flathub net.davidotek.pupgui2 || handle_error "Install PupGUI2 via Flatpak"
-flatpak install -y flathub com.valvesoftware.Steam.CompatibilityTool.Proton-GE || handle_error "Install Proton-GE via Flatpak"
-flatpak install -y flathub com.heroicgameslauncher.hgl || handle_error "Install Heroic Games Launcher via Flatpak"
-flatpak install -y flathub net.lutris.Lutris || handle_error "Install Lutris via Flatpak"
-
-# Step 24: Install Applications via Snap
-echo "Step 24: Installing Applications via Snap"
-sudo snap install postman || handle_error "Install Postman via Snap"
-sudo snap install flutter --classic || handle_error "Install Flutter via Snap"
-sudo snap install blender --classic || handle_error "Install Blender via Snap"
-
-# Step 25: Install KVM
-echo "Step 25: Installing KVM"
-sudo pacman -S --noconfirm qemu-full virt-manager virt-viewer dnsmasq bridge-utils libguestfs ebtables vde2 openbsd-netcat || handle_error "Install KVM"
-sudo systemctl enable libvirtd.service || handle_error "Enable libvirtd.service"
-sudo systemctl start libvirtd.service || handle_error "Start libvirtd.service"
-sudo usermod -aG libvirt $USER || handle_error "Add user to libvirt group"
-sudo systemctl restart libvirtd.service || handle_error "Restart libvirtd.service"
-
-# Step 26: Install Docker Desktop
-echo "Step 26: Installing Docker Desktop"
-yay -S --noconfirm docker-desktop || handle_error "Install Docker Desktop"
-systemctl --user disable docker-desktop || handle_error "Disable Docker Desktop"
-
-# Step 27: Install Various Tools
-echo "Step 27: Installing Various Tools"
-yay -S --noconfirm anydesk-bin google-chrome || handle_error "Install Various Tools"
-
-# Step 28: Install Printer Support
-echo "Step 28: Installing Printer Support"
-sudo pacman -Syu --noconfirm cups cups-browsed cups-filters cups-pdf system-config-printer ghostscript gsfonts foomatic-db-engine foomatic-db foomatic-db-ppds foomatic-db-nonfree foomatic-db-nonfree-ppds gutenprint foomatic-db-gutenprint-ppds print-manager --needed || handle_error "Install Printer Support"
-sudo systemctl enable --now cups.socket || handle_error "Enable cups.socket"
-sudo systemctl enable --now cups.service || handle_error "Enable cups.service"
-
-# Step 29: Enable Network Printer
-echo "Step 29: Enabling Network Printer"
-sudo pacman -S --noconfirm nss-mdns avahi --needed || handle_error "Install nss-mdns and avahi"
-sudo systemctl enable --now avahi-daemon || handle_error "Enable avahi-daemon"
-sudo sed -i 's/hosts: mymachines/hosts: mymachines mdns_minimal [NOTFOUND=return]/' /etc/nsswitch.conf || handle_error "Edit /etc/nsswitch.conf"
-sudo systemctl restart avahi-daemon NetworkManager || handle_error "Restart avahi-daemon and NetworkManager"
-sudo systemctl enable --now cups-browsed.service || handle_error "Enable cups-browsed.service"
-
-# Step 30: Network Manager
-echo "Step 30: Installing and Enabling Network Manager"
-sudo pacman -S --noconfirm networkmanager || handle_error "Install Network Manager"
-sudo systemctl enable NetworkManager.service || handle_error "Enable NetworkManager.service"
-sudo systemctl start NetworkManager.service || handle_error "Start NetworkManager.service"
-
-# Step 31: Power Management
-echo "Step 31: Installing and Enabling Power Management"
-sudo pacman -S --noconfirm thermald || handle_error "Install thermald"
-sudo systemctl enable thermald || handle_error "Enable thermald"
-sudo systemctl start thermald || handle_error "Start thermald"
-
-# Step 32: Firewall Configuration
-echo "Step 32: Configuring Firewall"
-sudo pacman -S --noconfirm ufw || handle_error "Install ufw"
-sudo systemctl enable ufw || handle_error "Enable ufw"
-sudo systemctl start ufw || handle_error "Start ufw"
-sudo ufw default deny incoming || handle_error "Set ufw default deny incoming"
-sudo ufw default allow outgoing || handle_error "Set ufw default allow outgoing"
-sudo ufw allow ssh || handle_error "Allow ssh in ufw"
-sudo ufw enable || handle_error "Enable ufw"
-
-# Step 33: Hardware Acceleration for Media
-echo "Step 33: Installing Hardware Acceleration for Media"
-sudo pacman -S --noconfirm ffmpeg vdpauinfo libva-vdpau-driver libva-utils || handle_error "Install Hardware Acceleration for Media"
-
-# Step 34: Enable Bash Completion
-echo "Step 34: Enabling Bash Completion"
-sudo pacman -S --noconfirm bash-completion || handle_error "Install bash-completion"
-
-# Step 35: Install GNOME Browser Connector
-echo "Step 35: Installing GNOME Browser Connector"
-sudo pacman -S --noconfirm gnome-browser-connector || handle_error "Install GNOME Browser Connector"
-
-# Step 36: Enable Bluetooth
-echo "Step 36: Enabling Bluetooth"
-sudo systemctl enable --now bluetooth.service || handle_error "Enable bluetooth.service"
-
-# Step 37: Install Python Tools
-echo "Step 37: Installing Python Tools"
-sudo pacman -S --noconfirm python-pip python-pipx || handle_error "Install Python Tools"
-
-# Step 38: Install Easy Effect Presets
-echo "Step 38: Installing Easy Effect Presets"
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/JackHack96/PulseEffects-Presets/master/install.sh)" || handle_error "Install Easy Effect Presets"
-
-# Step 39: Install Gogh (Terminal Color Schemes)
-echo "Step 39: Installing Gogh (Terminal Color Schemes)"
-bash -c "$(wget -qO- https://git.io/vQgMr)" || handle_error "Install Gogh"
-
-echo "Arch Linux setup completed successfully!"
+# Execute main function
+main
