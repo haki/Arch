@@ -249,3 +249,99 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/JackHack96/PulseEffects-
 ```bash
 bash -c "$(wget -qO- https://git.io/vQgMr)"
 ```
+## Audio Configuration for High Quality Output
+
+### PipeWire Setup
+```bash
+sudo pacman -S pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber
+systemctl --user enable pipewire.service
+systemctl --user enable wireplumber.service
+systemctl --user enable pipewire-pulse.service
+```
+
+### High Quality Audio Configuration
+
+1. PipeWire main configuration:
+```bash
+mkdir -p ~/.config/pipewire/
+cp /usr/share/pipewire/pipewire.conf ~/.config/pipewire/
+```
+
+Edit `~/.config/pipewire/pipewire.conf`:
+```
+context.properties = {
+    default.clock.rate = 192000             # Highest sampling rate
+    default.clock.allowed-rates = [ 44100 48000 96000 192000 ]
+    default.clock.quantum = 1024            # Buffer size for better quality
+    default.clock.min-quantum = 1024
+    default.clock.max-quantum = 2048        # More flexibility
+}
+```
+
+2. Client configuration:
+```bash
+cp /usr/share/pipewire/client.conf ~/.config/pipewire/
+```
+
+Edit `~/.config/pipewire/client.conf`:
+```
+stream.properties = {
+    resample.quality = 15                   # Highest resampling quality
+}
+
+context.modules = [
+    { name = libpipewire-module-rt
+        args = {
+            nice.level = -15                # Higher CPU priority
+        }
+        flags = [ ifexists nofail ]
+    }
+]
+```
+
+3. WirePlumber configuration:
+```bash
+mkdir -p ~/.config/wireplumber/main.lua.d/
+touch ~/.config/wireplumber/main.lua.d/51-alsa-custom.lua
+```
+
+Content for `51-alsa-custom.lua`:
+```lua
+rule = {
+  matches = {
+    {
+      { "node.name", "matches", "alsa_output.*" },
+    },
+  },
+  apply_properties = {
+    ["audio.format"] = "S24_LE",           # 24-bit audio quality
+    ["audio.rate"] = 192000,               # Highest sampling rate
+    ["api.alsa.period-size"] = 1024,       # Larger buffer size
+    ["api.alsa.headroom"] = 16384,         # More headroom
+    ["audio.channels"] = 2,
+    ["audio.position"] = "FL,FR",
+    ["node.latency"] = "1024/192000",      # Optimized latency
+    ["node.pause-on-idle"] = false         # Continuous audio output
+  },
+}
+
+table.insert(alsa_monitor.rules,rule)
+```
+
+4. Restart services:
+```bash
+systemctl --user restart wireplumber.service pipewire.service pipewire-pulse.service
+```
+
+This configuration provides:
+- 192kHz sampling rate
+- 24-bit audio depth
+- Maximum resampling quality
+- Optimized buffer and latency
+- Maximum CPU priority
+
+If you experience audio stuttering, you can lower these values to:
+- clock.rate and audio.rate: 96000
+- resample.quality: 10
+- quantum and period-size: 512
+- node.latency: "512/96000"
