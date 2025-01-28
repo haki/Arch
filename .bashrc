@@ -33,7 +33,27 @@ alias egrep='egrep --color=auto'
 alias fgrep='fgrep --color=auto'
 alias diff='diff --color=auto'
 
+# Python virtual environment kolay aktivasyon
+alias venv='python -m venv venv'
+alias activate='source venv/bin/activate'
+export PYTHONDONTWRITEBYTECODE=1  # Python __pycache__ oluşturmasını engelle
+
 # Sistem kısayolları
+alias ports='netstat -tulanp'
+alias weather='curl wttr.in'
+alias ip='curl ifconfig.me'
+alias clean='sudo pacman -Sc && yay -Sc' # Arch Linux özel komutları
+alias pacsize='expac -H M "%011m\t%-20n\t%10d" $(comm -23 <(pacman -Qqen | sort) <(pacman -Qqg base base-devel | sort)) | sort -n'
+alias pacorphan='sudo pacman -Qtdq'
+alias pacclean='sudo pacman -Rns $(pacman -Qtdq)'
+alias paclast='expac --timefmt="%Y-%m-%d %T" "%l\t%n" | sort | tail -n 20'
+alias paclog='tail -f /var/log/pacman.log'
+alias yaysave='yay -Ps'
+alias yayclean='yay -Sc && yay -Yc'
+alias update='sudo pacman -Syu && yay -Syu' # Sistem güncelleme
+alias mem='free -h | grep "Mem:"'
+alias cpu='top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk "{print 100 - \$1"%"}"'
+alias diskspace='df -h /'
 alias c='clear'
 alias ..='cd ..'
 alias ...='cd ../..'
@@ -55,6 +75,10 @@ alias gp='git push'
 alias gl='git pull'
 alias gd='git diff'
 alias glo='git log --oneline --graph --decorate'
+
+# Daha iyi tab tamamlama
+bind 'set show-all-if-ambiguous on'
+bind 'set completion-ignore-case on'
 
 # Geçmiş ayarları
 HISTSIZE=10000
@@ -129,11 +153,29 @@ GEAR="⚙"
 PS1="\n${BOLD_BLUE}┌─[${BOLD_CYAN}\u${BOLD_BLUE}@${BOLD_CYAN}\h${BOLD_BLUE}]─[${BOLD_YELLOW}\w${BOLD_BLUE}]"
 PS1+="\$(git branch &>/dev/null;\
 if [ \$? -eq 0 ]; then \
-    echo \"\${BOLD_BLUE}─[${BOLD_PURPLE}${BRANCH}\$(git_color)\$(__git_ps1 '%s')${BOLD_BLUE}]\";\
+    echo \"${BOLD_BLUE}─[${BOLD_PURPLE}\$(__git_ps1 '%s')${BOLD_BLUE}]\";\
 fi)"
-PS1+="\n${BOLD_BLUE}└─${BOLD_GREEN}${ARROW}${RESET} "
+PS1+="\n${BOLD_BLUE}└─${BOLD_GREEN}${ARROW} ${RESET}"
 
 # Özel fonksiyonlar
+
+# Sistem durumunu göster
+function sysinfo() {
+    echo "CPU Kullanımı:"
+    top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4"%"}'
+    echo -e "\nMemory Kullanımı:"
+    free -h | grep "Mem:"
+    echo -e "\nDisk Kullanımı:"
+    df -h / | tail -n1
+}
+
+# Ağ durumunu kontrol et
+function netcheck() {
+    echo "Ping Google DNS:"
+    ping -c 1 8.8.8.8 | grep "time="
+    echo -e "\nAktif Bağlantılar:"
+    ss -tuln | grep "LISTEN"
+}
 function mkcd() {
     mkdir -p "$1" && cd "$1"
 }
@@ -159,6 +201,15 @@ function extract() {
     fi
 }
 
+function cleanup() {
+    echo "Cleaning up system..."
+    sudo pacman -Sc --noconfirm
+    yay -Sc --noconfirm
+    sudo rm -rf ~/.cache/*
+    sudo journalctl --vacuum-size=50M
+    echo "Cleanup completed!"
+}
+
 # Komut tamamlama ayarları
 if ! shopt -oq posix; then
     if [ -f /usr/share/bash-completion/bash_completion ]; then
@@ -167,3 +218,6 @@ if ! shopt -oq posix; then
         . /etc/bash_completion
     fi
 fi
+
+# Mise setup
+eval "$(~/.local/bin/mise activate bash)"
