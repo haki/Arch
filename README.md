@@ -1,100 +1,76 @@
-# Comprehensive Arch Linux Setup Guide for Ideapad Gaming 3 (15IMH05)
+# Arch Linux Setup Guide
 
-This guide provides a detailed setup process for Arch Linux on the Ideapad Gaming 3 (15IMH05), focusing on Intel and Nvidia graphics with the Gnome desktop. It includes essential drivers, development tools, and multimedia applications.
+## System Configuration
 
-## System Preparation
-
-### Modify pacman.conf
-Uncomment color and parallel downloads, and enable the multilib repository:
-
+### Pacman Configuration
 ```bash
-sudo nano /etc/pacman.conf
+# Edit /etc/pacman.conf
+# Uncomment Color
+# Uncomment and modify ParallelDownloads
+ParallelDownloads = 10
 ```
 
-Add or uncomment these lines:
-```
-# Misc options
-Color
-ParallelDownloads = 5
-
-[multilib]
-Include = /etc/pacman.d/mirrorlist
-```
-
-### Update system
+### ZRAM Configuration
 ```bash
-sudo pacman -Syu
-```
-
-### Review ZRAM Settings
-```bash
-sudo nano /etc/systemd/zram-generator.conf
-```
-
-Add or modify:
-```
+# Create/Edit /etc/systemd/zram-generator.conf
 [zram0]
 zram-size = ram / 2
 compression-algorithm = lz4
 ```
 
-### Set Swappiness Value
+### System Control Settings
 ```bash
-sudo nano /etc/sysctl.d/99-sysctl.conf
-```
-
-Add:
-```
+# Add to /etc/sysctl.d/99-sysctl.conf
 vm.swappiness=10
-```
 
-Apply changes:
-```bash
+# Apply changes
 sudo sysctl -p /etc/sysctl.d/99-sysctl.conf
 ```
 
-## Install Essential Packages
-
-### Base Development Tools and Git
+### Gaming Optimizations
 ```bash
-sudo pacman -S git base-devel
+# Create/Edit /etc/sysctl.d/80-gamecompatibility.conf
+vm.max_map_count = 2147483642
+sudo sysctl --system
+
+# Create/Edit /etc/tmpfiles.d/consistent-response-time-for-gaming.conf
+#    Path                  Mode UID  GID  Age Argument
+w /proc/sys/vm/compaction_proactiveness - - - - 0
+w /proc/sys/vm/watermark_boost_factor - - - - 1
+w /proc/sys/vm/min_free_kbytes - - - - 1048576
+w /proc/sys/vm/watermark_scale_factor - - - - 500
+w /proc/sys/vm/swappiness - - - - 10
+w /sys/kernel/mm/lru_gen/enabled - - - - 5
+w /proc/sys/vm/zone_reclaim_mode - - - - 0
+w /sys/kernel/mm/transparent_hugepage/enabled - - - - madvise
+w /sys/kernel/mm/transparent_hugepage/shmem_enabled - - - - advise
+w /sys/kernel/mm/transparent_hugepage/defrag - - - - never
+w /proc/sys/vm/page_lock_unfairness - - - - 1
+w /proc/sys/kernel/sched_child_runs_first - - - - 0
+w /proc/sys/kernel/sched_autogroup_enabled - - - - 1
+w /proc/sys/kernel/sched_cfs_bandwidth_slice_us - - - - 3000
+w /sys/kernel/debug/sched/base_slice_ns  - - - - 3000000
+w /sys/kernel/debug/sched/migration_cost_ns - - - - 500000
+w /sys/kernel/debug/sched/nr_migrate - - - - 8
 ```
 
-### Gnome Terminal
+## Package Installation
+
+### System Packages
 ```bash
-sudo pacman -S gnome-terminal
+sudo pacman -S git base-devel gnome-terminal intel-ucode mesa lib32-mesa vulkan-intel \
+    lib32-vulkan-intel vulkan-icd-loader lib32-vulkan-icd-loader nvidia-dkms nvidia-utils \
+    lib32-nvidia-utils nvidia-settings vulkan-icd-loader lib32-vulkan-icd-loader xorg-server \
+    xorg-xinit flatpak vlc steam papirus-icon-theme tlp tlp-rdw unzip dotnet-sdk mono \
+    touchegg jdk gstreamer qemu-full virt-manager virt-viewer dnsmasq bridge-utils \
+    libguestfs ebtables vde2 openbsd-netcat cups cups-browsed cups-filters cups-pdf \
+    system-config-printer ghostscript gsfonts foomatic-db-engine foomatic-db \
+    foomatic-db-ppds foomatic-db-nonfree foomatic-db-nonfree-ppds gutenprint \
+    foomatic-db-gutenprint-ppds print-manager nss-mdns avahi bash-completion \
+    gnome-browser-connector python-pip python-pipx
 ```
 
-### Intel Microcode
-```bash
-sudo pacman -S intel-ucode
-```
-
-### Video Drivers
-```bash
-sudo pacman -S mesa
-sudo pacman -S --needed lib32-mesa vulkan-intel lib32-vulkan-intel vulkan-icd-loader lib32-vulkan-icd-loader
-sudo pacman -S --needed nvidia-dkms nvidia-utils lib32-nvidia-utils nvidia-settings vulkan-icd-loader lib32-vulkan-icd-loader
-```
-
-### Xorg Packages
-```bash
-sudo pacman -S xorg-server xorg-xinit
-```
-
-### UFW (Uncomplicated Firewall)
-```bash
-sudo pacman -S ufw
-sudo systemctl enable ufw
-sudo systemctl start ufw
-```
-
-### Enable TRIM for SSD
-```bash
-sudo systemctl enable fstrim.timer
-```
-
-## Install AUR Helper (yay)
+### AUR Helper Installation (yay)
 ```bash
 cd /tmp
 git clone https://aur.archlinux.org/yay.git
@@ -103,155 +79,80 @@ makepkg -si
 cd ~
 ```
 
-### Fix file:// URIs in Gnome Nautilus (if needed)
+### AUR Packages
 ```bash
-xdg-mime default org.gnome.Nautilus.desktop inode/directory
+yay -S unityhub visual-studio-code-bin android-studio docker-desktop anydesk-bin \
+    github-desktop-bin brave-bin timeshift code-nautilus-git
 ```
 
-## Install Additional Package Managers
-
-### Snapd
+### Flatpak Packages
 ```bash
-cd /tmp
-git clone https://aur.archlinux.org/snapd.git
-cd snapd
-makepkg -si
-sudo systemctl enable --now snapd.socket
-sudo ln -s /var/lib/snapd/snap /snap
-cd ~
+flatpak install com.github.joseexposito.touche org.mozilla.Thunderbird \
+    md.obsidian.Obsidian org.telegram.desktop org.libreoffice.LibreOffice \
+    org.remmina.Remmina org.gimp.GIMP org.kde.kdenlive org.upscayl.Upscayl \
+    com.spotify.Client net.davidotek.pupgui2 \
+    com.valvesoftware.Steam.CompatibilityTool.Proton-GE \
+    com.heroicgameslauncher.hgl net.lutris.Lutris
 ```
 
-### Flatpak
+## Service Configuration
+
+### Enable Services
 ```bash
-sudo pacman -S flatpak
-```
-
-## Install Multimedia and Utility Software
-
-```bash
-sudo pacman -S vlc steam papirus-icon-theme tlp tlp-rdw unzip dotnet-sdk mono touchegg
-```
-
-Enable services:
-```bash
-sudo systemctl enable tlp.service
-sudo systemctl enable NetworkManager-dispatcher.service
-sudo systemctl mask systemd-rfkill.service systemd-rfkill.socket
-sudo systemctl enable touchegg.service
-sudo systemctl start touchegg
-```
-
-## Install Development Tools
-
-```bash
-yay -S unityhub visual-studio-code-bin android-studio rider pycharm-professional
-sudo pacman -S jre17-openjdk jdk17-openjdk
-```
-
-## Install System Utilities
-
-```bash
-yay -S timeshift
-```
-
-## Install Fonts
-
-```bash
-sudo pacman -S ttf-dejavu ttf-liberation noto-fonts
-yay -S ttf-ms-win11-auto ttf-adobe-source-fonts
-```
-
-## Install Multimedia Codecs
-
-```bash
-sudo pacman -S gstreamer
-```
-
-## Install Flatpak Applications
-
-```bash
-flatpak install -y flathub com.github.joseexposito.touche
-flatpak install -y flathub org.mozilla.Thunderbird
-flatpak install -y flathub md.obsidian.Obsidian
-flatpak install -y flathub org.telegram.desktop
-flatpak install -y flathub org.libreoffice.LibreOffice 
-flatpak install -y flathub org.remmina.Remmina
-flatpak install -y flathub com.github.wwmm.easyeffects
-flatpak install -y flathub org.gimp.GIMP
-flatpak install -y flathub com.discordapp.Discord
-flatpak install -y flathub org.kde.kdenlive
-flatpak install -y flathub org.upscayl.Upscayl
-flatpak install -y flathub com.spotify.Client
-flatpak install -y flathub net.davidotek.pupgui2
-flatpak install -y com.valvesoftware.Steam.CompatibilityTool.Proton-GE
-flatpak install -y flathub com.heroicgameslauncher.hgl
-flatpak install -y flathub net.lutris.Lutris
-```
-
-## Install Snap Applications
-
-```bash
-sudo snap install postman
-sudo snap install flutter --classic
-sudo snap install blender --classic
-```
-
-## Install Virtualization Tools
-
-```bash
-sudo pacman -S qemu-full virt-manager virt-viewer dnsmasq bridge-utils libguestfs ebtables vde2 openbsd-netcat
-sudo systemctl enable libvirtd.service
-sudo systemctl start libvirtd.service
-sudo usermod -aG libvirt $USER
-sudo systemctl restart libvirtd.service
-```
-
-## Install Additional Software
-
-```bash
-yay -S docker-desktop anydesk-bin github-desktop-bin google-chrome
-systemctl --user disable docker-desktop
-```
-
-## Install Printer Support
-
-```bash
-sudo pacman -S cups cups-browsed cups-filters cups-pdf system-config-printer ghostscript gsfonts foomatic-db-engine foomatic-db foomatic-db-ppds foomatic-db-nonfree foomatic-db-nonfree-ppds gutenprint foomatic-db-gutenprint-ppds print-manager
+sudo systemctl enable --now fstrim.timer
+sudo systemctl enable --now tlp.service
+sudo systemctl enable --now NetworkManager-dispatcher.service
+sudo systemctl enable --now touchegg.service
+sudo systemctl enable --now libvirtd.service
 sudo systemctl enable --now cups.socket
 sudo systemctl enable --now cups.service
-```
-
-### Network Printer Support
-
-```bash
-sudo pacman -S nss-mdns avahi
 sudo systemctl enable --now avahi-daemon
-sudo sed -i 's/hosts: mymachines /hosts: mymachines mdns_minimal [NOTFOUND=return] /' /etc/nsswitch.conf
-sudo systemctl restart avahi-daemon NetworkManager
 sudo systemctl enable --now cups-browsed.service
-```
-
-## Additional Utilities and Settings
-
-```bash
-sudo pacman -S bash-completion gnome-browser-connector python-pip python-pipx
 sudo systemctl enable --now bluetooth.service
+sudo systemctl enable --now systemd-oomd.service
 ```
 
-### Install Easy Effect Presets
-
+### Mask Services
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/JackHack96/PulseEffects-Presets/master/install.sh)"
+sudo systemctl mask systemd-rfkill.service systemd-rfkill.socket
 ```
 
-### Install Gogh (Terminal Color Schemes)
+## User Configuration
 
+### Group Management
 ```bash
-bash -c "$(wget -qO- https://git.io/vQgMr)"
+sudo usermod -aG libvirt $USER
 ```
-## Audio Configuration for High Quality Output
 
-### PipeWire Setup
+### Network Configuration
+```bash
+sudo sed -i 's/hosts: mymachines /hosts: mymachines mdns_minimal [NOTFOUND=return] /' /etc/nsswitch.conf
+```
+
+### GNOME Keyboard Shortcuts
+Navigate to Settings > Keyboard > View and Customize Shortcuts:
+
+Navigation:
+- Move window one workspace to the left: Shift + Super + Q
+- Move window one workspace to the right: Shift + Super + E
+- Switch applications: Disabled
+- Switch to workspace on the left: Super + Q
+- Switch to workspace on the right: Super + E
+- Switch windows: Alt + Tab
+
+System:
+- Show all apps: Disabled
+- Show the run command prompt: Alt + F12
+
+Custom:
+- Open terminal (gnome-terminal): Alt + Return
+- Playerctl next (playerctl next): Audio next
+- Playerctl play/pause (playerctl play-pause): Audio play
+- Playerctl previous (playerctl previous): Audio previous
+
+## Audio Configuration
+
+### PipeWire Installation and Service Setup
 ```bash
 sudo pacman -S pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber
 systemctl --user enable pipewire.service
@@ -261,14 +162,14 @@ systemctl --user enable pipewire-pulse.service
 
 ### High Quality Audio Configuration
 
-1. PipeWire main configuration:
+1. PipeWire Main Configuration:
 ```bash
 mkdir -p ~/.config/pipewire/
 cp /usr/share/pipewire/pipewire.conf ~/.config/pipewire/
 ```
 
 Edit `~/.config/pipewire/pipewire.conf`:
-```
+```conf
 context.properties = {
     default.clock.rate = 192000             # Highest sampling rate
     default.clock.allowed-rates = [ 44100 48000 96000 192000 ]
@@ -278,13 +179,13 @@ context.properties = {
 }
 ```
 
-2. Client configuration:
+2. Client Configuration:
 ```bash
 cp /usr/share/pipewire/client.conf ~/.config/pipewire/
 ```
 
 Edit `~/.config/pipewire/client.conf`:
-```
+```conf
 stream.properties = {
     resample.quality = 15                   # Highest resampling quality
 }
@@ -299,7 +200,7 @@ context.modules = [
 ]
 ```
 
-3. WirePlumber configuration:
+3. WirePlumber Configuration:
 ```bash
 mkdir -p ~/.config/wireplumber/main.lua.d/
 touch ~/.config/wireplumber/main.lua.d/51-alsa-custom.lua
@@ -328,19 +229,12 @@ rule = {
 table.insert(alsa_monitor.rules,rule)
 ```
 
-4. Restart services:
+4. Apply Configuration:
 ```bash
 systemctl --user restart wireplumber.service pipewire.service pipewire-pulse.service
 ```
 
-This configuration provides:
-- 192kHz sampling rate
-- 24-bit audio depth
-- Maximum resampling quality
-- Optimized buffer and latency
-- Maximum CPU priority
-
-If you experience audio stuttering, you can lower these values to:
+Note: If you experience audio stuttering, adjust these values:
 - clock.rate and audio.rate: 96000
 - resample.quality: 10
 - quantum and period-size: 512
