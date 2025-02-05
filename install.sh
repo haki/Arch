@@ -1,157 +1,27 @@
 #!/bin/bash
 
-# Colors for output
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
+# Exit on error
+set -e
 
-# Helper functions
-print_status() {
-    echo -e "${BLUE}[*] $1...${NC}"
-}
+# System Configuration
+configure_system() {
+    # Pacman Configuration
+    sudo sed -i 's/#Color/Color/' /etc/pacman.conf
+    sudo sed -i 's/#ParallelDownloads = 5/ParallelDownloads = 10/' /etc/pacman.conf
 
-print_success() {
-    echo -e "${GREEN}[+] $1${NC}"
-}
+    # ZRAM Configuration
+    echo -e "[zram0]\nzram-size = ram / 2\ncompression-algorithm = lz4" | sudo tee /etc/systemd/zram-generator.conf
 
-print_error() {
-    echo -e "${RED}[!] $1${NC}"
-}
+    # System Control Settings
+    echo "vm.swappiness=10" | sudo tee /etc/sysctl.d/99-sysctl.conf
+    sudo sysctl -p /etc/sysctl.d/99-sysctl.conf
 
-# Function to execute commands with sudo
-run_with_sudo() {
-    if [ $# -eq 0 ]; then
-        print_error "No command provided to run_with_sudo"
-        return 1
-    fi
-    
-    echo -e "${BLUE}[*] This operation requires sudo privileges${NC}"
-    sudo "$@"
-}
+    # Gaming Optimizations
+    echo "vm.max_map_count = 2147483642" | sudo tee /etc/sysctl.d/80-gamecompatibility.conf
+    sudo sysctl --system
 
-# Check if running as root
-if [ "$EUID" -eq 0 ]; then 
-    print_error "Don't run this script as root! Run as normal user."
-    exit 1
-fi
-
-# Create temporary directory for downloads
-TEMP_DIR=$(mktemp -d)
-trap 'rm -rf "$TEMP_DIR"' EXIT
-
-# Function to install packages in parallel
-install_packages() {
-    local packages=("$@")
-    print_status "Installing packages: ${packages[*]}"
-    run_with_sudo pacman -S --needed --noconfirm "${packages[@]}"
-}
-
-# Function to install AUR packages in parallel
-install_aur_packages() {
-    local packages=("$@")
-    print_status "Installing AUR packages: ${packages[*]}"
-    yay -S --noconfirm "${packages[@]}"
-}
-
-# 1. Configure pacman and update system
-print_status "Configuring pacman"
-run_with_sudo sed -i -e 's/#Color/Color/' \
-                     -e 's/#ParallelDownloads = 5/ParallelDownloads = 10/' \
-                     -e '/\[multilib\]/,+1 s/^#//' /etc/pacman.conf
-
-print_status "Updating system"
-run_with_sudo pacman -Syu --noconfirm
-
-# 2. Configure ZRAM and sysctl
-print_status "Configuring ZRAM"
-run_with_sudo tee /etc/systemd/zram-generator.conf > /dev/null << 'EOF'
-[zram0]
-zram-size = ram / 2
-compression-algorithm = lz4
-EOF
-
-print_status "Configuring sysctl parameters"
-run_with_sudo tee /etc/sysctl.d/99-sysctl.conf > /dev/null << 'EOF'
-vm.swappiness=10
-vm.max_map_count=2147483642
-EOF
-
-run_with_sudo sysctl --system
-
-# 3. Install base packages in parallel
-base_packages=(
-    git base-devel gnome-terminal intel-ucode
-    mesa lib32-mesa vulkan-intel lib32-vulkan-intel
-    vulkan-icd-loader lib32-vulkan-icd-loader
-    nvidia-dkms nvidia-utils lib32-nvidia-utils nvidia-settings
-    xorg-server xorg-xinit firewalld
-)
-install_packages "${base_packages[@]}"
-
-# 4. Enable core services
-print_status "Enabling system services"
-services=(fstrim.timer firewalld systemd-oomd.service)
-for service in "${services[@]}"; do
-    run_with_sudo systemctl enable "$service"
-done
-
-# 5. Install AUR helper (yay) if not present
-if ! command -v yay &> /dev/null; then
-    print_status "Installing yay AUR helper"
-    git clone https://aur.archlinux.org/yay.git "$TEMP_DIR/yay"
-    (cd "$TEMP_DIR/yay" && makepkg -si --noconfirm)
-fi
-
-# 6. Install multimedia and development packages
-multimedia_packages=(
-    vlc steam papirus-icon-theme tlp tlp-rdw unzip
-    dotnet-sdk mono touchegg flatpak jre17-openjdk jdk17-openjdk
-)
-install_packages "${multimedia_packages[@]}"
-
-# 7. Install AUR packages in parallel
-aur_packages=(
-    unityhub visual-studio-code-bin android-studio timeshift
-    docker-desktop anydesk-bin github-desktop-bin
-    google-chrome microsoft-edge-stable-bin
-)
-install_aur_packages "${aur_packages[@]}"
-
-# 8. Configure printer support
-printer_packages=(
-    cups cups-browsed cups-filters cups-pdf system-config-printer
-    ghostscript gsfonts foomatic-db-engine foomatic-db foomatic-db-ppds
-    foomatic-db-nonfree foomatic-db-nonfree-ppds gutenprint
-    foomatic-db-gutenprint-ppds print-manager nss-mdns avahi
-)
-install_packages "${printer_packages[@]}"
-
-# Enable printer services
-printer_services=(cups.socket cups.service avahi-daemon cups-browsed.service)
-for service in "${printer_services[@]}"; do
-    run_with_sudo systemctl enable --now "$service"
-done
-
-# 9. Configure audio with PipeWire
-print_status "Configuring PipeWire"
-audio_packages=(pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber)
-install_packages "${audio_packages[@]}"
-
-mkdir -p ~/.config/pipewire/
-cat > ~/.config/pipewire/pipewire.conf << 'EOF'
-context.properties = {
-    default.clock.rate = 192000
-    default.clock.allowed-rates = [ 44100 48000 96000 192000 ]
-    default.clock.quantum = 1024
-    default.clock.min-quantum = 1024
-    default.clock.max-quantum = 2048
-}
-EOF
-
-# 10. Configure gaming optimizations
-print_status "Configuring gaming optimizations"
-run_with_sudo tee /etc/tmpfiles.d/gaming-optimizations.conf > /dev/null << 'EOF'
+    # Gaming Performance Configuration
+    cat << 'EOF' | sudo tee /etc/tmpfiles.d/consistent-response-time-for-gaming.conf
 w /proc/sys/vm/compaction_proactiveness - - - - 0
 w /proc/sys/vm/watermark_boost_factor - - - - 1
 w /proc/sys/vm/min_free_kbytes - - - - 1048576
@@ -166,32 +36,151 @@ w /proc/sys/vm/page_lock_unfairness - - - - 1
 w /proc/sys/kernel/sched_child_runs_first - - - - 0
 w /proc/sys/kernel/sched_autogroup_enabled - - - - 1
 w /proc/sys/kernel/sched_cfs_bandwidth_slice_us - - - - 3000
+w /sys/kernel/debug/sched/base_slice_ns  - - - - 3000000
+w /sys/kernel/debug/sched/migration_cost_ns - - - - 500000
+w /sys/kernel/debug/sched/nr_migrate - - - - 8
+EOF
+}
+
+# Package Installation
+install_packages() {
+    # System Packages
+    sudo pacman -S --noconfirm git base-devel gnome-terminal intel-ucode mesa lib32-mesa \
+        vulkan-intel lib32-vulkan-intel vulkan-icd-loader lib32-vulkan-icd-loader \
+        nvidia-dkms nvidia-utils lib32-nvidia-utils nvidia-settings vulkan-icd-loader \
+        lib32-vulkan-icd-loader xorg-server xorg-xinit flatpak vlc steam papirus-icon-theme \
+        tlp tlp-rdw unzip dotnet-sdk mono touchegg jdk gstreamer qemu-full virt-manager \
+        virt-viewer dnsmasq bridge-utils libguestfs ebtables vde2 openbsd-netcat cups \
+        cups-browsed cups-filters cups-pdf system-config-printer ghostscript gsfonts \
+        foomatic-db-engine foomatic-db foomatic-db-ppds foomatic-db-nonfree \
+        foomatic-db-nonfree-ppds gutenprint foomatic-db-gutenprint-ppds print-manager \
+        nss-mdns avahi bash-completion gnome-browser-connector python-pip python-pipx \
+        pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber
+
+    # Install yay
+    cd /tmp
+    git clone https://aur.archlinux.org/yay.git
+    cd yay
+    makepkg -si --noconfirm
+    cd ~
+
+    # AUR Packages
+    yay -S --noconfirm unityhub visual-studio-code-bin android-studio docker-desktop \
+        anydesk-bin github-desktop-bin brave-bin timeshift code-nautilus-git
+
+    # Flatpak Packages
+    flatpak install -y com.github.joseexposito.touche org.mozilla.Thunderbird \
+        md.obsidian.Obsidian org.telegram.desktop org.libreoffice.LibreOffice \
+        org.remmina.Remmina org.gimp.GIMP org.kde.kdenlive org.upscayl.Upscayl \
+        com.spotify.Client net.davidotek.pupgui2 \
+        com.valvesoftware.Steam.CompatibilityTool.Proton-GE \
+        com.heroicgameslauncher.hgl net.lutris.Lutris
+}
+
+# Service Configuration
+configure_services() {
+    # Enable Services
+    services=(
+        "fstrim.timer"
+        "tlp.service"
+        "NetworkManager-dispatcher.service"
+        "touchegg.service"
+        "libvirtd.service"
+        "cups.socket"
+        "cups.service"
+        "avahi-daemon"
+        "cups-browsed.service"
+        "bluetooth.service"
+        "systemd-oomd.service"
+    )
+
+    for service in "${services[@]}"; do
+        sudo systemctl enable --now "$service"
+    done
+
+    # Mask Services
+    sudo systemctl mask systemd-rfkill.service systemd-rfkill.socket
+}
+
+# User Configuration
+configure_user() {
+    # Add user to libvirt group
+    sudo usermod -aG libvirt "$USER"
+
+    # Network Configuration
+    sudo sed -i 's/hosts: mymachines /hosts: mymachines mdns_minimal [NOTFOUND=return] /' /etc/nsswitch.conf
+}
+
+# Audio Configuration
+configure_audio() {
+    # Enable PipeWire services
+    systemctl --user enable pipewire.service
+    systemctl --user enable wireplumber.service
+    systemctl --user enable pipewire-pulse.service
+
+    # PipeWire Configuration
+    mkdir -p ~/.config/pipewire/
+    cp /usr/share/pipewire/pipewire.conf ~/.config/pipewire/
+    cat << 'EOF' > ~/.config/pipewire/pipewire.conf
+context.properties = {
+    default.clock.rate = 192000
+    default.clock.allowed-rates = [ 44100 48000 96000 192000 ]
+    default.clock.quantum = 1024
+    default.clock.min-quantum = 1024
+    default.clock.max-quantum = 2048
+}
 EOF
 
-# 11. Install and configure Flatpak applications
-flatpak_apps=(
-    com.github.joseexposito.touche
-    org.mozilla.Thunderbird
-    md.obsidian.Obsidian
-    org.telegram.desktop
-    org.libreoffice.LibreOffice
-    org.remmina.Remmina
-    com.github.wwmm.easyeffects
-    org.gimp.GIMP
-    com.discordapp.Discord
-    org.kde.kdenlive
-    org.upscayl.Upscayl
-    com.spotify.Client
-    net.davidotek.pupgui2
-    com.valvesoftware.Steam.CompatibilityTool.Proton-GE
-    com.heroicgameslauncher.hgl
-    net.lutris.Lutris
-)
+    # Client Configuration
+    cp /usr/share/pipewire/client.conf ~/.config/pipewire/
+    cat << 'EOF' > ~/.config/pipewire/client.conf
+stream.properties = {
+    resample.quality = 15
+}
 
-print_status "Installing Flatpak applications"
-for app in "${flatpak_apps[@]}"; do
-    flatpak install -y flathub "$app"
-done
+context.modules = [
+    { name = libpipewire-module-rt
+        args = {
+            nice.level = -15
+        }
+        flags = [ ifexists nofail ]
+    }
+]
+EOF
 
-print_success "Installation completed successfully!"
-echo "Please restart your system to apply all changes"
+    # WirePlumber Configuration
+    mkdir -p ~/.config/wireplumber/main.lua.d/
+    cat << 'EOF' > ~/.config/wireplumber/main.lua.d/51-alsa-custom.lua
+rule = {
+  matches = {
+    {
+      { "node.name", "matches", "alsa_output.*" },
+    },
+  },
+  apply_properties = {
+    ["audio.format"] = "S24_LE",
+    ["audio.rate"] = 192000,
+    ["api.alsa.period-size"] = 1024,
+    ["api.alsa.headroom"] = 16384,
+    ["audio.channels"] = 2,
+    ["audio.position"] = "FL,FR",
+    ["node.latency"] = "1024/192000",
+    ["node.pause-on-idle"] = false
+  },
+}
+
+table.insert(alsa_monitor.rules,rule)
+EOF
+
+    # Restart audio services
+    systemctl --user restart wireplumber.service pipewire.service pipewire-pulse.service
+}
+
+# Main execution
+echo "Starting Arch Linux setup..."
+configure_system
+install_packages
+configure_services
+configure_user
+configure_audio
+echo "Setup completed successfully!"
